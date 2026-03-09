@@ -95,6 +95,37 @@ for cert in certs:
                 st.success("✅ Valor disponível para agendamento!")
             else:
                 st.caption(f"Faltam R$ {price_brl - current_balance:.2f}")
+                
+st.write("---")
+st.subheader("📚 Central de Estudos: Microsoft Learn")
+
+# Criando abas para organizar o material
+tab1, tab2, tab3 = st.tabs(["Material SC-300", "Material AZ-900", "Anotações Rápidas"])
+
+with tab1:
+    st.markdown("### 🔐 Foco: Identity and Access Administrator")
+    st.write("Link direto para o roteiro oficial:")
+    st.link_button("Abrir Trilha SC-300 no MS Learn", "https://learn.microsoft.com/en-us/training/courses/sc-300t00")
+    
+    # Exemplo de incorporação (Note: alguns sites da MS podem bloquear exibição em iframe por segurança)
+    st.info("💡 Dica: Use esta seção para salvar os links dos módulos de AD que você está aplicando no SFB.")
+
+with tab2:
+    st.markdown("### ☁️ Foco: Azure Fundamentals")
+    st.write("Material base para a certificação inicial:")
+    st.link_button("Abrir roteiro AZ-900", "https://learn.microsoft.com/en-us/training/paths/microsoft-azure-fundamentals-cloud-concepts/")
+
+with tab3:
+    st.markdown("### 📝 Meu 'Cheat Sheet' (Comandos Úteis)")
+    # Espaço para você listar os comandos de PowerShell que mais usa no Serviço Florestal
+    with st.expander("Comandos de PowerShell para AD"):
+        st.code("""
+# Listar usuários de uma Unidade Organizacional (OU)
+Get-ADUser -Filter * -SearchBase "OU=Usuarios,DC=sfb,DC=gov,DC=br"
+
+# Verificar membros de um grupo de segurança
+Get-ADGroupMember -Identity "Grupo_Seguranca_Financeiro"
+        """, language="powershell")
 
 # 6. Histórico de Oportunidades (Web Watcher)
 st.write("---")
