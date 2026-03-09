@@ -2,12 +2,18 @@ import streamlit as st
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
-import requests
 
-# 1. Configurações de Segurança
+# Tenta carregar do .env local, se falhar, busca nos Secrets do Streamlit
 load_dotenv()
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+
+# Lógica de fallback para ambiente local vs cloud
+url = os.environ.get("SUPABASE_URL") or st.secrets.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_KEY")
+
+if not url or not key:
+    st.error("Erro: Credenciais do Supabase não encontradas. Verifique os Secrets ou o arquivo .env.")
+    st.stop()
+
 supabase: Client = create_client(url, key)
 
 st.set_page_config(page_title="Cert-Manager Pro", page_icon="🚀", layout="wide")
