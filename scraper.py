@@ -27,6 +27,11 @@ def check_multiple_sources():
     
     headers = {'User-Agent': 'Mozilla/5.0'}
     found_opportunities = []
+    
+    if matches:
+            found_opportunities.append(f"✅ {site['name']}: {', '.join(set(matches))}")
+            # ADICIONE ESTA LINHA ABAIXO:
+            log_to_supabase(site['name'], list(set(matches)), site['url'])
 
     for site in targets:
         try:
