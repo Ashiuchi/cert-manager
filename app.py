@@ -82,19 +82,35 @@ for cert in certs:
             lab_repo = cert['name'].split(' ')[0].replace('-', '')
             st.link_button("📂 Labs Oficiais (GitHub)", f"https://github.com/MicrosoftLearning/{lab_repo}")
 
-        with col_lab:
-            st.markdown("#### 🧪 Guia de Laboratório (Wiki)")
-            # Exibe o conteúdo da coluna 'lab_guide' que criamos no Supabase
-            if cert.get('lab_guide'):
-                st.markdown(cert['lab_guide'])
-            else:
-                st.info("Aguardando definição de roteiro prático.")
+with col_lab:
+            st.markdown("#### 🧪 Check-list de Laboratório (AZ-900)")
             
-            if "SC-300" in cert['name']:
-                st.caption("Foco: Reestruturação de Identidades Híbridas (AD Connect)")
+            # Lista de tarefas do Lab AZ-900
+            tasks = [
+                "Criar Resource Group (RG-Estudos)",
+                "Aplicar Azure Policy (Region Lock)",
+                "Configurar Resource Lock (CanNotDelete)",
+                "Gerar Relatório de Custos (TCO)"
+            ]
+            
+            # Gerenciando o progresso
+            completed_tasks = 0
+            for i, task in enumerate(tasks):
+                # Criando chaves únicas para cada checkbox baseadas no nome da cert
+                if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
+                    completed_tasks += 1
+            
+            # Cálculo e exibição da porcentagem
+            progress_pct = completed_tasks / len(tasks)
+            st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
+            st.progress(progress_pct)
 
-        st.write("---")
-        st.caption(f"Categoria: {cert['category']} | Monitoramento ativo via Web Watcher")
+            if progress_pct == 1.0:
+                st.balloons()
+                st.success("🏆 Laboratório AZ-900 Concluído!")
+            
+            with st.expander("📝 Comandos Rápidos"):
+                st.code("az group create --name RG-Estudos --location brazilsouth", language="bash")
 
 # 6. Histórico de Oportunidades
 st.write("---")
