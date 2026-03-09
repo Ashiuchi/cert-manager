@@ -1,0 +1,31 @@
+name: Monday Voucher Watcher
+
+on:
+  schedule:
+    # Roda toda segunda-feira às 09:00 UTC (06:00 BRT)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Permite rodar manualmente para testar
+
+jobs:
+  scrape_and_alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests beautifulsoup4 supabase python-dotenv
+
+      - name: Run Scraper and Alert
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scraper.py
