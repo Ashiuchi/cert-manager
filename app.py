@@ -38,7 +38,7 @@ def get_dollar_rate():
 dolar = get_dollar_rate()
 certs, current_balance, alerts_history, all_links = get_dashboard_data()
 
-# 4. Interface
+# 4. Interface (Métricas)
 st.title("🚀 Cert-Manager: Roadmap Pleno")
 m1, m2, m3 = st.columns(3)
 m1.metric("Cotação USD/BRL", f"R$ {dolar:.2f}")
@@ -69,10 +69,13 @@ for cert in certs:
             st.progress(progress)
             
             st.markdown("#### 🔗 Recursos e Documentos")
-            # Lista links e arquivos salvos
+            # Lista links e PDFs salvos
             cert_specific_links = [l for l in all_links if l['cert_id'] == cert['id']]
-            for l in cert_specific_links:
-                st.link_button(f"📄 {l['link_name']}", l['url'])
+            if cert_specific_links:
+                for l in cert_specific_links:
+                    st.link_button(f"📄 {l['link_name']}", l['url'])
+            else:
+                st.caption("Nenhum recurso adicionado.")
             
             # Popover para novos recursos (Link ou PDF)
             with st.popover("➕ Adicionar Recurso (Link/PDF)"):
@@ -87,16 +90,26 @@ for cert in certs:
                             st.rerun()
 
                 with tab_pdf:
-                    uploaded_file = st.file_chooser(f"Escolha um PDF para {cert['name']}", type="pdf", key=f"file_{cert['id']}")
+                    # CORREÇÃO: st.file_uploader em vez de st.file_chooser
+                    uploaded_file = st.file_uploader(f"Escolha um PDF", type="pdf", key=f"file_{cert['id']}")
                     if uploaded_file:
                         if st.button("Fazer Upload", key=f"btn_p_{cert['id']}"):
                             file_path = f"{cert['id']}/{uploaded_file.name}"
+                            
                             # Upload para o Bucket 'cert-files'
-                            res = supabase.storage.from_("cert-files").upload(file_path, uploaded_file.getvalue(), {"content-type": "application/pdf"})
+                            supabase.storage.from_("cert-files").upload(
+                                path=file_path,
+                                file=uploaded_file.getvalue(),
+                                file_options={"content-type": "application/pdf"}
+                            )
                             
                             # Gera a URL pública e salva na tabela cert_links
                             public_url = supabase.storage.from_("cert-files").get_public_url(file_path)
-                            supabase.table("cert_links").insert({"cert_id": cert['id'], "link_name": f"PDF: {uploaded_file.name}", "url": public_url}).execute()
+                            supabase.table("cert_links").insert({
+                                "cert_id": cert['id'], 
+                                "link_name": f"PDF: {uploaded_file.name}", 
+                                "url": public_url
+                            }).execute()
                             st.success("Upload concluído!")
                             st.rerun()
 
@@ -105,11 +118,23 @@ for cert in certs:
             if cert.get('lab_guide'):
                 lines = cert['lab_guide'].split('\n')
                 tasks = [line.replace('- [ ]', '').strip() for line in lines if line.startswith('- [ ]')]
-                if tasks:
-                    completed_tasks = sum([st.checkbox(task, key=f"task_{cert['id']}_{i}") for i, task in enumerate(tasks)])
-                    st.progress(completed_tasks / len(tasks) if tasks else 0)
                 
-                st.markdown("\n".join([l for l in lines if not l.startswith('- [ ]')]))
+                if tasks:
+                    completed_tasks = 0
+                    for i, task in enumerate(tasks):
+                        if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
+                            completed_tasks += 1
+                    
+                    progress_pct = completed_tasks / len(tasks) if tasks else 0
+                    st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
+                    st.progress(progress_pct)
+                    
+                    if progress_pct == 1.0:
+                        st.balloons()
+                
+                other_content = "\n".join([line for line in lines if not line.startswith('- [ ]')])
+                if other_content.strip():
+                    st.markdown(other_content)
 
 # 6. Histórico
 st.write("---")
