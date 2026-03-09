@@ -81,39 +81,36 @@ for cert in certs:
             lab_repo = cert['name'].split(' ')[0].replace('-', '')
             st.link_button("📂 Labs Oficiais (GitHub)", f"https://github.com/MicrosoftLearning/{lab_repo}")
 
-        with col_lab:
-            # Lógica para mostrar o Checklist APENAS no card da AZ-900
-            if "AZ-900" in cert['name']:
-                st.markdown("#### 🧪 Check-list de Laboratório (AZ-900)")
-                tasks = [
-                    "Criar Resource Group (RG-Estudos)",
-                    "Aplicar Azure Policy (Region Lock)",
-                    "Configurar Resource Lock (CanNotDelete)",
-                    "Gerar Relatório de Custos (TCO)"
-                ]
-                
-                completed_tasks = 0
-                for i, task in enumerate(tasks):
-                    if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
-                        completed_tasks += 1
-                
-                progress_pct = completed_tasks / len(tasks) if tasks else 0
-                st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
-                st.progress(progress_pct)
-
-                if progress_pct == 1.0:
-                    st.balloons()
-                    st.success("🏆 Laboratório AZ-900 Concluído!")
-                
-                with st.expander("📝 Comandos Rápidos"):
-                    st.code("az group create --name RG-Estudos --location brazilsouth", language="bash")
+with col_lab:
+            st.markdown(f"#### 🧪 Lab & Study Guide")
             
+            # Se houver conteúdo no banco de dados
+            if cert.get('lab_guide'):
+                # Separamos as linhas para identificar o que é tarefa
+                lines = cert['lab_guide'].split('\n')
+                tasks = [line.replace('- [ ]', '').strip() for line in lines if line.startswith('- [ ]')]
+                
+                if tasks:
+                    completed_tasks = 0
+                    for i, task in enumerate(tasks):
+                        # Chave única por cert e por índice da tarefa
+                        if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
+                            completed_tasks += 1
+                    
+                    # Barra de progresso dinâmica
+                    progress_pct = completed_tasks / len(tasks)
+                    st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
+                    st.progress(progress_pct)
+                    
+                    if progress_pct == 1.0:
+                        st.balloons()
+                        st.success(f"🏆 {cert['name']} Lab Concluído!")
+                
+                # Mostra o restante do conteúdo (instruções, comandos) que não são checkboxes
+                other_content = "\n".join([line for line in lines if not line.startswith('- [ ]')])
+                st.markdown(other_content)
             else:
-                st.markdown("#### 🧪 Guia de Laboratório (Wiki)")
-                if cert.get('lab_guide'):
-                    st.markdown(cert['lab_guide'])
-                else:
-                    st.info("Aguardando definição de roteiro prático para esta certificação.")
+                st.info("Aguardando importação de dados do MS Learn...")
 
 # 6. Histórico de Oportunidades
 st.write("---")
