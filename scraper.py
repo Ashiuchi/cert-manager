@@ -18,7 +18,6 @@ def log_to_supabase(source, keywords, url):
         }).execute()
 
 def check_multiple_sources():
-    # Lista de sites estratégicos
     targets = [
         {"name": "MS Training Days (Global)", "url": "https://events.microsoft.com/en-us/allevents/"},
         {"name": "Microsoft Learn Challenges", "url": "https://learn.microsoft.com/en-us/credentials/certifications/challenges"},
@@ -27,11 +26,6 @@ def check_multiple_sources():
     
     headers = {'User-Agent': 'Mozilla/5.0'}
     found_opportunities = []
-    
-    if matches:
-            found_opportunities.append(f"✅ {site['name']}: {', '.join(set(matches))}")
-            # ADICIONE ESTA LINHA ABAIXO:
-            log_to_supabase(site['name'], list(set(matches)), site['url'])
 
     for site in targets:
         try:
@@ -40,23 +34,18 @@ def check_multiple_sources():
                 soup = BeautifulSoup(response.text, 'html.parser')
                 content = soup.get_text().lower()
                 
-                # Palavras-chave para sua trilha e descontos
-                # Palavras-chave bilíngues para maximizar os achados
                 keywords = [
-                    # Foco em Gratuidade
                     "free", "gratuito", "grátis", "100% off", "zero cost", "no-cost", 
-                    
-                    # Foco em Descontos (Conforme sua sugestão)
                     "discount", "desconto", "voucher", "promo", "off", "coupon", "cupom",
                     "50% off", "30% off", "exam replay",
-                    
-                    # Foco na sua Trilha Microsoft
                     "az-900", "sc-900", "sc-300", "az-104", "microsoft learn", "cloud skills challenge"
                 ]
                                 
                 matches = [word for word in keywords if word in content]
                 if matches:
                     found_opportunities.append(f"✅ {site['name']}: {', '.join(set(matches))}")
+                    # Logando no banco de dados apenas quando houver achados
+                    log_to_supabase(site['name'], list(set(matches)), site['url'])
         except Exception as e:
             print(f"Erro ao varrer {site['name']}: {e}")
 
