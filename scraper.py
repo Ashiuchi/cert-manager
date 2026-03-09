@@ -36,8 +36,19 @@ def check_multiple_sources():
                 content = soup.get_text().lower()
                 
                 # Palavras-chave para sua trilha e descontos
-                keywords = ["az-900", "sc-900", "sc-300", "az-104", "discount", "voucher", "free", "50% off"]
-                
+                # Palavras-chave bilíngues para maximizar os achados
+                keywords = [
+                    # Foco em Gratuidade
+                    "free", "gratuito", "grátis", "100% off", "zero cost", "no-cost", 
+                    
+                    # Foco em Descontos (Conforme sua sugestão)
+                    "discount", "desconto", "voucher", "promo", "off", "coupon", "cupom",
+                    "50% off", "30% off", "exam replay",
+                    
+                    # Foco na sua Trilha Microsoft
+                    "az-900", "sc-900", "sc-300", "az-104", "microsoft learn", "cloud skills challenge"
+                ]
+                                
                 matches = [word for word in keywords if word in content]
                 if matches:
                     found_opportunities.append(f"✅ {site['name']}: {', '.join(set(matches))}")
