@@ -1,0 +1,23 @@
+# Ambientes Virtuais
+venv/
+env/
+.env
+__pycache__/
+*.py[cod]
+
+# Streamlit
+.streamlit/config.toml
+.streamlit/secrets.toml
+
+# Node.js (se usarmos para o scraper)
+node_modules/
+npm-debug.log*
+
+# SO e IDEs
+.DS_Store
+.vscode/
+.idea/
+
+# Banco de dados local (se usar)
+*.db
+*.sqlite3
