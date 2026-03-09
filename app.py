@@ -78,39 +78,42 @@ for cert in certs:
             if cert.get('exam_url'):
                 st.link_button("Microsoft Learn", cert['exam_url'])
             
-            # Link dinâmico para os Labs oficiais no GitHub da Microsoft
             lab_repo = cert['name'].split(' ')[0].replace('-', '')
             st.link_button("📂 Labs Oficiais (GitHub)", f"https://github.com/MicrosoftLearning/{lab_repo}")
 
-with col_lab:
-            st.markdown("#### 🧪 Check-list de Laboratório (AZ-900)")
-            
-            # Lista de tarefas do Lab AZ-900
-            tasks = [
-                "Criar Resource Group (RG-Estudos)",
-                "Aplicar Azure Policy (Region Lock)",
-                "Configurar Resource Lock (CanNotDelete)",
-                "Gerar Relatório de Custos (TCO)"
-            ]
-            
-            # Gerenciando o progresso
-            completed_tasks = 0
-            for i, task in enumerate(tasks):
-                # Criando chaves únicas para cada checkbox baseadas no nome da cert
-                if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
-                    completed_tasks += 1
-            
-            # Cálculo e exibição da porcentagem
-            progress_pct = completed_tasks / len(tasks)
-            st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
-            st.progress(progress_pct)
+        with col_lab:
+            # Lógica para mostrar o Checklist APENAS no card da AZ-900
+            if "AZ-900" in cert['name']:
+                st.markdown("#### 🧪 Check-list de Laboratório (AZ-900)")
+                tasks = [
+                    "Criar Resource Group (RG-Estudos)",
+                    "Aplicar Azure Policy (Region Lock)",
+                    "Configurar Resource Lock (CanNotDelete)",
+                    "Gerar Relatório de Custos (TCO)"
+                ]
+                
+                completed_tasks = 0
+                for i, task in enumerate(tasks):
+                    if st.checkbox(task, key=f"task_{cert['id']}_{i}"):
+                        completed_tasks += 1
+                
+                progress_pct = completed_tasks / len(tasks) if tasks else 0
+                st.write(f"**Progresso do Lab:** {progress_pct*100:.0f}%")
+                st.progress(progress_pct)
 
-            if progress_pct == 1.0:
-                st.balloons()
-                st.success("🏆 Laboratório AZ-900 Concluído!")
+                if progress_pct == 1.0:
+                    st.balloons()
+                    st.success("🏆 Laboratório AZ-900 Concluído!")
+                
+                with st.expander("📝 Comandos Rápidos"):
+                    st.code("az group create --name RG-Estudos --location brazilsouth", language="bash")
             
-            with st.expander("📝 Comandos Rápidos"):
-                st.code("az group create --name RG-Estudos --location brazilsouth", language="bash")
+            else:
+                st.markdown("#### 🧪 Guia de Laboratório (Wiki)")
+                if cert.get('lab_guide'):
+                    st.markdown(cert['lab_guide'])
+                else:
+                    st.info("Aguardando definição de roteiro prático para esta certificação.")
 
 # 6. Histórico de Oportunidades
 st.write("---")
