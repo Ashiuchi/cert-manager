@@ -3,8 +3,7 @@ import os
 import requests
 from supabase import create_client, Client
 from dotenv import load_dotenv
-from scraper import check_microsoft_offers
-
+from scraper import run_watcher # Importando sua automação consolidada
 
 # 1. Configurações de Ambiente e Segurança
 load_dotenv()
@@ -19,13 +18,15 @@ supabase: Client = create_client(url, key)
 
 st.set_page_config(page_title="Cert-Manager Pro", page_icon="🚀", layout="wide")
 
-# 2. Funções de Backend (Consolidadas)
-def get_data():
-    """Busca certificações e saldo da carteira simultaneamente."""
+# 2. Funções de Backend
+def get_dashboard_data():
+    """Busca certificações, saldo e histórico de alertas."""
     certs = supabase.table("certifications").select("*").order("id").execute()
     wallet = supabase.table("study_wallet").select("balance_brl").order("id", desc=True).limit(1).execute()
+    history = supabase.table("alert_history").select("*").order("alert_date", desc=True).limit(5).execute()
+    
     balance = float(wallet.data[0]['balance_brl']) if wallet.data else 0.0
-    return certs.data, balance
+    return certs.data, balance, history.data
 
 def get_dollar_rate():
     """Monitoramento em tempo real da cotação USD/BRL."""
@@ -33,74 +34,79 @@ def get_dollar_rate():
         res = requests.get("https://economia.awesomeapi.com.br/json/last/USD-BRL").json()
         return float(res['USDBRL']['bid'])
     except:
-        return 5.10 # Valor de segurança (fallback)
+        return 5.15 # Fallback atualizado
 
-# 3. Processamento de Dados
+# 3. Processamento Inicial
 dolar = get_dollar_rate()
-certs, current_balance = get_data()
+certs, current_balance, alerts_history = get_dashboard_data()
 
 # 4. Interface do Usuário (UI)
 st.title("🚀 Cert-Manager: Roadmap Pleno")
 
-# Dashboard de Métricas
+# Métricas Principais
 m1, m2, m3 = st.columns(3)
 m1.metric("Cotação USD/BRL", f"R$ {dolar:.2f}")
 m2.metric("Saldo em Carteira", f"R$ {current_balance:.2f}")
-m3.metric("Foco Atual", "AZ-900 & SC-300")
+m3.metric("Foco Carreira", "Identity & Security (SC-300)")
 
 st.write("---")
 
-# Sidebar para Aportes Financeiros
-st.sidebar.header("💰 Gestão Financeira")
+# Sidebar: Aportes e Execução Manual do Scraper
+st.sidebar.header("⚙️ Painel de Controle")
+
 with st.sidebar.form("deposit_form"):
-    deposit = st.number_input("Novo aporte para estudos (R$):", min_value=0.0, step=50.0)
+    deposit = st.number_input("Novo aporte (R$):", min_value=0.0, step=50.0)
     if st.form_submit_button("Confirmar Depósito"):
         new_total = current_balance + deposit
         supabase.table("study_wallet").insert({"balance_brl": new_total}).execute()
-        st.success("Depósito realizado com sucesso!")
+        st.success("Saldo atualizado!")
         st.rerun()
+
+st.sidebar.write("---")
+if st.sidebar.button("🔍 Executar Varredura Global"):
+    with st.sidebar.status("Varrendo múltiplas fontes..."):
+        result = run_watcher()
+        if result["status"] == "Success":
+            st.sidebar.success("Novas oportunidades detectadas e enviadas ao Telegram!")
+            st.rerun()
+        else:
+            st.sidebar.info("Nenhuma oferta nova encontrada no momento.")
 
 # 5. Roadmap e Progresso Financeiro
 st.subheader("🎯 Minha Trilha Microsoft")
 
 for cert in certs:
-    price_usd = float(cert['price_usd'])
-    price_brl = price_usd * dolar
-    
-    # Cálculo de progresso baseado no saldo atual
+    price_brl = float(cert['price_usd']) * dolar
     progress = min(current_balance / price_brl, 1.0) if price_brl > 0 else 0
     
     with st.expander(f"📌 {cert['name']} - {cert['status']}"):
-        c1, c2 = st.columns([1, 2])
+        col_info, col_prog = st.columns([1, 2])
         
-        with c1:
+        with col_info:
             st.write(f"**Categoria:** {cert['category']}")
-            st.write(f"**Custo:** ${price_usd:.2f} (R$ {price_brl:.2f})")
+            st.write(f"**Investimento:** R$ {price_brl:.2f}")
+            if cert.get('exam_url'):
+                st.link_button("Ir para o MS Learn", cert['exam_url'])
         
-        with c2:
-            st.write(f"**Progresso Financeiro:** {progress*100:.1f}%")
+        with col_prog:
+            st.write(f"**Progresso de Poupança:** {progress*100:.1f}%")
             st.progress(progress)
-            
             if progress >= 1.0:
-                st.success("✅ Recurso disponível para o voucher!")
+                st.success("✅ Valor disponível para agendamento!")
             else:
-                st.info(f"Faltam R$ {price_brl - current_balance:.2f} para atingir a meta.")
+                st.caption(f"Faltam R$ {price_brl - current_balance:.2f}")
 
-        # Link oficial para monitoramento manual (até o scraper estar pronto)
-        if cert.get('exam_url'):
-            st.link_button("Ver no Microsoft Learn", cert['exam_url'])
-
+# 6. Histórico de Oportunidades (Web Watcher)
 st.write("---")
-st.subheader("🔍 Web Watcher: Monitor de Descontos")
+st.subheader("📜 Últimas Oportunidades Detectadas")
 
-if st.button("Executar Varredura por Vouchers"):
-    with st.spinner("Vasculhando sites oficiais da Microsoft..."):
-        result = check_microsoft_offers()
-        
-        if result["status"] == "Success":
-            st.success(f"🚨 Possíveis oportunidades encontradas para: {', '.join(result['offers'])}")
-            st.info(f"Verifique os detalhes em: {result['url']}")
-        elif result["status"] == "No offers found":
-            st.warning("Nenhum voucher direto detectado hoje. Continue focado nos estudos!")
-        else:
-            st.error(f"Erro ao acessar o monitor: {result['message']}")
+if alerts_history:
+    for alert in alerts_history:
+        with st.container():
+            date_fmt = alert['alert_date'][:10]
+            st.markdown(f"**{date_fmt} - {alert['source_name']}**")
+            st.write(f"Achados: `{alert['found_keywords']}`")
+            st.link_button(f"Verificar em {alert['source_name']}", alert['url'])
+            st.write("")
+else:
+    st.info("O histórico está vazio. Execute uma varredura para começar.")
