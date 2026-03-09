@@ -2,58 +2,64 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
-# Carrega variáveis locais se existirem
 load_dotenv()
 
+def log_to_supabase(source, keywords, url):
+    sb_url = os.environ.get("SUPABASE_URL")
+    sb_key = os.environ.get("SUPABASE_KEY")
+    if sb_url and sb_key:
+        sb: Client = create_client(sb_url, sb_key)
+        sb.table("alert_history").insert({
+            "source_name": source,
+            "found_keywords": ", ".join(keywords),
+            "url": url
+        }).execute()
+
+def check_multiple_sources():
+    # Lista de sites estratégicos
+    targets = [
+        {"name": "MS Training Days (Global)", "url": "https://events.microsoft.com/en-us/allevents/"},
+        {"name": "Microsoft Learn Challenges", "url": "https://learn.microsoft.com/en-us/credentials/certifications/challenges"},
+        {"name": "Mindhub (Discounts)", "url": "https://www.mindhub.com/microsoft-certification-exam-vouchers"}
+    ]
+    
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    found_opportunities = []
+
+    for site in targets:
+        try:
+            response = requests.get(site['url'], headers=headers, timeout=10)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                content = soup.get_text().lower()
+                
+                # Palavras-chave para sua trilha e descontos
+                keywords = ["az-900", "sc-900", "sc-300", "az-104", "discount", "voucher", "free", "50% off"]
+                
+                matches = [word for word in keywords if word in content]
+                if matches:
+                    found_opportunities.append(f"✅ {site['name']}: {', '.join(set(matches))}")
+        except Exception as e:
+            print(f"Erro ao varrer {site['name']}: {e}")
+
+    return found_opportunities
+
 def send_telegram_alert(message):
-    """
-    Envia alertas em tempo real para o seu Telegram.
-    Essencial para monitoramento proativo de carreira.
-    """
-    # Busca tokens do ambiente (Local ou Streamlit Secrets)
     token = os.environ.get("TELEGRAM_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    
     if token and chat_id:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
-        try:
-            requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=10)
-        except Exception as e:
-            print(f"Erro ao enviar alerta: {e}")
+        requests.post(url, data={"chat_id": chat_id, "text": message})
 
-def check_microsoft_offers():
-    """
-    Realiza a varredura no hub de treinamentos da Microsoft.
-    Foco: Vouchers para AZ-900, SC-900, SC-300 e AZ-104.
-    """
-    url = "https://www.microsoft.com/pt-br/trainingdays"
-    
-    try:
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        content = soup.get_text().lower()
-        
-        # Sua trilha estratégica de ascensão para Pleno
-        keywords = ["az-900", "sc-900", "sc-300", "az-104", "voucher", "gratuito", "free"]
-        found = [word for word in keywords if word in content]
-        
-        if found:
-            results = f"🚨 VOUCHER/TREINAMENTO DETECTADO!\nO Cert-Manager encontrou oportunidades para: {', '.join(set(found))}.\nConfira em: {url}"
-            send_telegram_alert(results)
-            return {"status": "Success", "offers": list(set(found)), "url": url}
-        
-        return {"status": "No offers found", "offers": [], "url": url}
-        
-    except Exception as e:
-        error_msg = f"Erro na varredura: {str(e)}"
-        print(error_msg)
-        return {"status": "Error", "message": error_msg}
+def run_watcher():
+    opps = check_multiple_sources()
+    if opps:
+        msg = "🚨 NOVAS OPORTUNIDADES DETECTADAS!\n\n" + "\n".join(opps)
+        send_telegram_alert(msg)
+        return {"status": "Success", "details": opps}
+    return {"status": "No new deals", "details": []}
 
-# Permite execução manual para teste ou via GitHub Actions
 if __name__ == "__main__":
-    print("Iniciando varredura manual...")
-    resultado = check_microsoft_offers()
-    print(f"Resultado: {resultado['status']}")
+    run_watcher()
